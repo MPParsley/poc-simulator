@@ -1,0 +1,1505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>REALITi-SIM — Medical Simulation Platform</title>
+<style>
+/*═══════════════════════════════════════════════════════════
+  RESET & BASE
+═══════════════════════════════════════════════════════════*/
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#080808;--bg1:#111;--bg2:#1a1a1a;--bg3:#222;--bg4:#2a2a2a;
+  --border:#333;--border2:#444;
+  --green:#00ff41;--green-dim:#00aa2a;
+  --yellow:#ffd700;--yellow-dim:#aa9000;
+  --red:#ff3333;--red-dim:#aa2222;
+  --cyan:#00e5ff;--blue:#4488ff;--orange:#ff8c00;
+  --pink:#ff69b4;--white:#e0e0e0;--gray:#888;
+  --purple:#bb88ff;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--white);
+  font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif;user-select:none}
+button{font-family:inherit;cursor:pointer}
+input[type=range]{-webkit-appearance:none;background:#444;height:6px;border-radius:3px;outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--blue);cursor:pointer}
+select{background:var(--bg3);color:var(--white);border:1px solid var(--border2);border-radius:6px;padding:6px 8px;font-size:13px}
+
+/*═══════════════════════════════════════════════════════════
+  VIEW SWITCHER
+═══════════════════════════════════════════════════════════*/
+.view{display:none;height:100%;width:100%;flex-direction:column}
+.view.active{display:flex}
+
+/*═══════════════════════════════════════════════════════════
+  TOP BAR
+═══════════════════════════════════════════════════════════*/
+.top-bar{display:flex;justify-content:space-between;align-items:center;
+  padding:2px 12px;background:var(--bg1);border-bottom:1px solid var(--border);height:28px;font-size:12px;flex-shrink:0}
+.top-bar .left{display:flex;align-items:center;gap:8px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green)}
+.dot.warn{background:var(--yellow);box-shadow:0 0 6px var(--yellow)}
+.dot.crit{background:var(--red);box-shadow:0 0 6px var(--red);animation:blink .5s infinite}
+.mode-badge{padding:2px 8px;border-radius:4px;font-weight:700;font-size:11px;letter-spacing:.5px}
+
+/*═══════════════════════════════════════════════════════════
+  TABS
+═══════════════════════════════════════════════════════════*/
+.tabs{display:flex;height:32px;flex-shrink:0;background:var(--bg1)}
+.tab{padding:6px 20px;font-size:13px;font-weight:600;border:none;background:#1a3050;color:#aaa;transition:.2s}
+.tab.active{background:#2266aa;color:#fff}
+.tab:hover{background:#2a4a7c;color:#ddd}
+
+/*═══════════════════════════════════════════════════════════
+  MONITOR MAIN LAYOUT
+═══════════════════════════════════════════════════════════*/
+.monitor-main{display:flex;flex:1;overflow:hidden}
+
+/* LEFT: Defib/Pacing panel */
+.left-panel{width:210px;background:var(--bg2);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;padding:8px;gap:8px;overflow-y:auto;flex-shrink:0}
+.left-panel::-webkit-scrollbar{width:4px}
+.left-panel::-webkit-scrollbar-thumb{background:#444;border-radius:2px}
+
+.energy-box{background:#1a6b3a;border-radius:14px;padding:10px;text-align:center}
+.energy-box .lbl{color:#aaffaa;font-size:12px;font-weight:600}
+.energy-disp{background:#000;border:2px solid #444;border-radius:8px;padding:6px;margin:6px auto;width:110px;
+  text-align:center;font:700 30px 'Courier New',monospace;color:#fff}
+.e-btns{display:flex;justify-content:center;gap:10px;margin-top:4px}
+.e-btn{width:42px;height:42px;border-radius:50%;border:2px solid #fff;background:#1a6b3a;
+  color:#fff;font-size:20px;font-weight:700;display:flex;align-items:center;justify-content:center;transition:.15s}
+.e-btn:hover{background:#2a8b5a;transform:scale(1.05)}
+.e-btn:active{transform:scale(.95)}
+
+.d-btn{padding:10px;border-radius:10px;border:none;font-size:16px;font-weight:700;text-transform:uppercase;
+  letter-spacing:1px;transition:.15s;width:100%}
+.d-btn:hover{filter:brightness(1.15);transform:scale(1.02)}
+.d-btn:active{transform:scale(.97)}
+.btn-charge{background:var(--orange);color:#000}
+.btn-charge.charging{animation:pulse-o .5s infinite}
+.btn-shock{background:#cc3333;color:#fff;font-size:20px;box-shadow:0 0 0 3px #aa2222}
+.btn-shock.charged{background:#ff2222;box-shadow:0 0 20px #ff2222,0 0 0 3px red;animation:pulse-r .8s infinite}
+.btn-shock:disabled{background:#663333;color:#999;box-shadow:none;cursor:not-allowed;animation:none}
+.btn-disarm{background:#88bbdd;color:#334}
+.btn-aed{background:#22aa44;color:#fff}
+
+.sync-row{display:flex;align-items:center;gap:6px;margin-top:auto;padding:6px 0}
+.sync-lbl{background:#555;padding:4px 12px;border-radius:16px;font-size:12px;font-weight:600}
+.toggle{width:44px;height:24px;border-radius:12px;background:#444;position:relative;cursor:pointer;transition:.3s;flex-shrink:0}
+.toggle.on{background:var(--blue)}
+.toggle .knob{width:18px;height:18px;border-radius:50%;background:#fff;position:absolute;top:3px;left:3px;transition:.3s}
+.toggle.on .knob{left:23px}
+.lock-btn{width:36px;height:36px;border-radius:10px;border:none;background:#3388cc;color:#fff;font-size:16px;
+  display:flex;align-items:center;justify-content:center}
+
+/* Pacing */
+.pace-ctrl{background:#1a3a5c;border-radius:12px;padding:10px;text-align:center}
+.pace-ctrl .lbl{color:#88bbff;font-size:11px;font-weight:600}
+.pace-disp{background:#000;border-radius:6px;padding:4px;font:700 26px 'Courier New',monospace;margin:4px 0}
+.pace-btn{padding:10px;border-radius:10px;border:none;font-size:15px;font-weight:700;background:#2266aa;color:#fff;width:100%}
+.pace-btn.active{background:#22aa44}
+
+/* AED */
+.aed-status{background:#000;border:2px solid var(--green);border-radius:10px;padding:12px;text-align:center;
+  font-size:14px;font-weight:600;color:var(--green);line-height:1.6}
+.aed-status.analyzing{border-color:var(--yellow);color:var(--yellow)}
+.aed-status.shock-advised{border-color:var(--red);color:var(--red);animation:blink .6s infinite}
+
+/*═══════════════════════════════════════════════════════════
+  WAVEFORM AREA
+═══════════════════════════════════════════════════════════*/
+.wave-area{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative}
+.wave-row{flex:1;display:flex;border-bottom:1px solid #111;min-height:0}
+.wave-cc{flex:1;position:relative;min-width:0}
+.wave-cc canvas{width:100%;height:100%;display:block}
+.vital-box{width:150px;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;padding:2px 10px;flex-shrink:0}
+.v-lbl{font-size:13px;font-weight:600}
+.v-val{font:700 42px 'Courier New',monospace;line-height:1}
+.v-sub{font-size:12px}
+.v-val.small{font-size:28px}
+.unit-btns{display:flex;gap:3px;margin-top:2px}
+.u-btn{padding:1px 6px;font-size:10px;border:1px solid #555;border-radius:3px;background:var(--bg3);color:#aaa;cursor:pointer}
+.u-btn.on{background:#555;color:#fff;border-color:#777}
+
+/* Ectopic indicators */
+.ectopic-indicator{position:absolute;top:4px;left:8px;font-size:10px;color:var(--yellow);font-weight:600;opacity:.8}
+
+/*═══════════════════════════════════════════════════════════
+  ALARM BAR
+═══════════════════════════════════════════════════════════*/
+.alarm-bar{display:none;height:26px;background:#cc2222;color:#fff;font-weight:700;font-size:12px;
+  align-items:center;justify-content:center;flex-shrink:0;animation:blink .5s infinite}
+.alarm-bar.warn{background:#aa7700}
+.alarm-bar.show{display:flex}
+
+/*═══════════════════════════════════════════════════════════
+  BOTTOM TOOLBAR
+═══════════════════════════════════════════════════════════*/
+.toolbar{height:64px;background:var(--bg3);border-top:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;gap:6px;padding:0 8px;flex-shrink:0}
+.tb-btn{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 12px;
+  border-radius:14px;border:2px solid #555;background:var(--bg3);color:#ccc;font-size:10px;
+  font-weight:600;min-width:70px;transition:.15s}
+.tb-btn:hover{background:#444;border-color:#777}
+.tb-btn .ico{font-size:20px}
+.tb-btn.hl{background:#1a1a66;border-color:#4444cc;color:#fff}
+.tb-vitals{background:#1a1a66;border:2px solid #4444cc;border-radius:50%;width:56px;height:56px;
+  min-width:56px;padding:0;color:#7777ff;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.tb-vitals .ico{font-size:24px}
+
+/*═══════════════════════════════════════════════════════════
+  SIDE PANELS (Scenarios, Settings, Chart, etc.)
+═══════════════════════════════════════════════════════════*/
+.side-panel{position:absolute;top:0;right:0;width:340px;height:100%;background:var(--bg2);
+  border-left:2px solid var(--border);z-index:100;display:none;flex-direction:column;overflow:hidden}
+.side-panel.open{display:flex}
+.sp-head{padding:10px 14px;background:var(--bg1);border-bottom:1px solid var(--border);
+  display:flex;justify-content:space-between;align-items:center}
+.sp-head h3{font-size:15px;color:#fff}
+.sp-close{background:none;border:none;color:#aaa;font-size:18px;padding:4px 8px}
+.sp-close:hover{color:#fff}
+.sp-body{flex:1;overflow-y:auto;padding:12px}
+.sp-body::-webkit-scrollbar{width:4px}
+.sp-body::-webkit-scrollbar-thumb{background:#444;border-radius:2px}
+
+.sg{margin-bottom:14px}
+.sg label{display:block;font-size:11px;color:#aaa;margin-bottom:3px}
+.sg .rv{text-align:center;font-size:13px;font-weight:600;margin-top:2px}
+.preset{display:block;width:100%;padding:8px 10px;margin-bottom:4px;border-radius:8px;
+  border:1px solid #444;background:var(--bg4);color:#ddd;font-size:12px;text-align:left;transition:.15s}
+.preset:hover{background:#3a3a3a;border-color:#666}
+.preset.active-preset{border-color:var(--blue);background:#1a2a4a}
+
+/* Checklist */
+.check-item{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #222}
+.check-item input[type=checkbox]{width:18px;height:18px;accent-color:var(--green)}
+.check-item label{font-size:13px;color:#ccc}
+
+/*═══════════════════════════════════════════════════════════
+  12-LEAD ECG MODAL
+═══════════════════════════════════════════════════════════*/
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:500;
+  justify-content:center;align-items:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--bg1);border:2px solid var(--border);border-radius:12px;
+  width:90%;max-width:1100px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden}
+.modal-head{padding:10px 16px;background:var(--bg);border-bottom:1px solid var(--border);
+  display:flex;justify-content:space-between;align-items:center}
+.modal-head h2{font-size:16px;color:#fff}
+.modal-body{flex:1;overflow-y:auto;padding:12px}
+.ecg12-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.ecg12-cell{background:#000;border:1px solid #222;border-radius:4px;position:relative;height:80px}
+.ecg12-cell canvas{width:100%;height:100%}
+.ecg12-label{position:absolute;top:2px;left:6px;font-size:10px;font-weight:700;color:var(--green)}
+
+/*═══════════════════════════════════════════════════════════
+  VENTILATOR VIEW
+═══════════════════════════════════════════════════════════*/
+.vent-main{flex:1;display:flex;overflow:hidden}
+.vent-controls{width:260px;background:var(--bg2);border-right:1px solid var(--border);padding:12px;
+  overflow-y:auto;display:flex;flex-direction:column;gap:10px}
+.vent-display{flex:1;display:flex;flex-direction:column;padding:12px;gap:8px}
+.vent-param{background:var(--bg1);border-radius:10px;padding:10px;text-align:center}
+.vent-param .lbl{font-size:11px;color:#aaa;margin-bottom:2px}
+.vent-param .val{font:700 36px 'Courier New',monospace;color:var(--cyan)}
+.vent-param .unit{font-size:11px;color:#888}
+.vent-waves{flex:1;display:flex;flex-direction:column;gap:4px}
+.vent-wave{flex:1;background:#000;border-radius:6px;position:relative}
+.vent-wave canvas{width:100%;height:100%}
+.vent-wave-label{position:absolute;top:4px;left:8px;font-size:11px;font-weight:600}
+.vent-mode-btn{padding:10px;border-radius:8px;border:2px solid var(--border);background:var(--bg3);
+  color:#ccc;font-size:13px;font-weight:600;width:100%;text-align:left;transition:.15s}
+.vent-mode-btn.on{border-color:var(--cyan);color:var(--cyan);background:#0a2a3a}
+
+/*═══════════════════════════════════════════════════════════
+  INSTRUCTOR CONTROL VIEW
+═══════════════════════════════════════════════════════════*/
+.ctrl-main{flex:1;display:flex;overflow:hidden}
+.ctrl-left{width:50%;border-right:1px solid var(--border);overflow-y:auto;padding:16px}
+.ctrl-right{width:50%;overflow-y:auto;padding:16px}
+.ctrl-section{margin-bottom:20px}
+.ctrl-section h4{font-size:14px;color:var(--blue);margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid #333}
+.ctrl-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ctrl-param{background:var(--bg2);border-radius:8px;padding:10px}
+.ctrl-param label{display:block;font-size:11px;color:#aaa;margin-bottom:4px}
+.ctrl-param .val-row{display:flex;align-items:center;gap:8px}
+.ctrl-param .cur-val{font:700 22px 'Courier New',monospace;color:var(--green);min-width:50px;text-align:center}
+.ctrl-param input[type=range]{flex:1}
+.incident-btn{padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);
+  color:#ccc;font-size:12px;width:100%;text-align:left;transition:.15s;margin-bottom:4px}
+.incident-btn:hover{background:var(--bg4);border-color:#666}
+.incident-btn.active-inc{border-color:var(--red);color:var(--red);background:#2a1111}
+.rhythm-btn{padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);
+  color:#ccc;font-size:11px;transition:.15s}
+.rhythm-btn:hover{background:var(--bg4)}
+.rhythm-btn.sel{border-color:var(--green);color:var(--green);background:#0a2a0a}
+
+/* Event log */
+.event-log{background:#000;border-radius:8px;padding:8px;max-height:200px;overflow-y:auto;font-size:11px;font-family:'Courier New',monospace}
+.event-log::-webkit-scrollbar{width:4px}
+.event-log::-webkit-scrollbar-thumb{background:#444;border-radius:2px}
+.log-entry{padding:2px 0;border-bottom:1px solid #111;display:flex;gap:8px}
+.log-time{color:var(--gray);min-width:70px}
+.log-msg{color:var(--green)}
+.log-msg.warn{color:var(--yellow)}
+.log-msg.crit{color:var(--red)}
+
+/*═══════════════════════════════════════════════════════════
+  CHART VIEW (Patient Record)
+═══════════════════════════════════════════════════════════*/
+.chart-main{flex:1;display:flex;overflow:hidden}
+.chart-nav{width:200px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column}
+.chart-nav-btn{padding:12px 16px;border:none;background:none;color:#aaa;font-size:13px;text-align:left;
+  border-bottom:1px solid #222;transition:.15s}
+.chart-nav-btn:hover{background:var(--bg3);color:#ddd}
+.chart-nav-btn.on{background:var(--bg3);color:var(--blue);border-left:3px solid var(--blue)}
+.chart-content{flex:1;overflow-y:auto;padding:20px}
+.chart-content::-webkit-scrollbar{width:4px}
+.chart-content::-webkit-scrollbar-thumb{background:#444;border-radius:2px}
+.lab-table{width:100%;border-collapse:collapse;font-size:13px}
+.lab-table th{text-align:left;padding:6px 10px;background:var(--bg3);color:#aaa;font-size:11px;border-bottom:1px solid var(--border)}
+.lab-table td{padding:6px 10px;border-bottom:1px solid #222}
+.lab-table .abnormal{color:var(--red);font-weight:600}
+.lab-table .normal{color:var(--green)}
+.radio-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.radio-card{background:var(--bg3);border-radius:8px;padding:8px;text-align:center;cursor:pointer;border:2px solid transparent;transition:.15s}
+.radio-card:hover{border-color:var(--blue)}
+.radio-card .radio-icon{font-size:40px;margin-bottom:4px}
+.radio-card .radio-lbl{font-size:11px;color:#aaa}
+
+/*═══════════════════════════════════════════════════════════
+  CHARGE OVERLAY & SHOCK FLASH
+═══════════════════════════════════════════════════════════*/
+.charge-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;
+  flex-direction:column;justify-content:center;align-items:center}
+.charge-ov.show{display:flex}
+.charge-bar-c{width:300px;height:28px;background:#333;border-radius:14px;overflow:hidden;margin:16px}
+.charge-bar{height:100%;background:linear-gradient(90deg,var(--orange),#ff4400);width:0%;border-radius:14px;transition:width .1s linear}
+.charge-txt{font-size:22px;font-weight:700;color:var(--orange)}
+.shock-flash{display:none;position:fixed;inset:0;background:#fff;z-index:300;opacity:0}
+.shock-flash.flash{display:block;animation:flash-a .4s ease-out}
+
+/*═══════════════════════════════════════════════════════════
+  SKIN THEMES
+═══════════════════════════════════════════════════════════*/
+body.skin-zoll{--bg:#050810;--bg1:#0a1020;--bg2:#101828;--bg3:#182030;--border:#253050}
+body.skin-philips{--bg:#001a00;--bg1:#002200;--bg2:#003300;--bg3:#004400;--border:#006600}
+body.skin-corpuls{--bg:#0a0a14;--bg1:#10101e;--bg2:#181828;--bg3:#202030;--border:#303050}
+
+/*═══════════════════════════════════════════════════════════
+  ANIMATIONS
+═══════════════════════════════════════════════════════════*/
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes pulse-o{0%,100%{box-shadow:0 0 5px var(--orange)}50%{box-shadow:0 0 25px var(--orange)}}
+@keyframes pulse-r{0%,100%{box-shadow:0 0 10px #ff2222,0 0 0 3px red}50%{box-shadow:0 0 30px #ff2222,0 0 0 5px red}}
+@keyframes flash-a{0%{opacity:1}100%{opacity:0}}
+
+/*═══════════════════════════════════════════════════════════
+  RESPONSIVE
+═══════════════════════════════════════════════════════════*/
+@media(max-width:900px){
+  .left-panel{width:170px;padding:6px}
+  .vital-box{width:110px}
+  .v-val{font-size:30px}
+  .side-panel{width:280px}
+  .ctrl-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════
+  VIEW: MONITOR (Student-facing)
+═══════════════════════════════════════════════════════════ -->
+<div class="view active" id="viewMonitor">
+  <!-- Top bar -->
+  <div class="top-bar">
+    <div class="left"><div class="dot" id="connDot"></div><span id="deviceId">SIM-01</span>
+      <span class="mode-badge" id="modeBadge" style="background:var(--blue);color:#fff">MONITOR</span></div>
+    <div style="display:flex;gap:12px;align-items:center">
+      <select id="skinSelect" onchange="setSkin(this.value)" style="font-size:11px;padding:2px 6px">
+        <option value="">Generic</option><option value="skin-zoll">Zoll</option>
+        <option value="skin-philips">Philips</option><option value="skin-corpuls">Corpuls</option>
+      </select>
+      <span id="clock" style="color:#aaa">--:--:--</span>
+    </div>
+  </div>
+  <!-- Alarm bar -->
+  <div class="alarm-bar" id="alarmBar"></div>
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" onclick="monTab('defib',this)">Defibrillator</button>
+    <button class="tab" onclick="monTab('pacing',this)">Pacing</button>
+    <button class="tab" onclick="monTab('aed',this)">AED</button>
+  </div>
+  <!-- Main -->
+  <div class="monitor-main">
+    <!-- Left panel -->
+    <div class="left-panel" id="leftPanel">
+      <!-- DEFIB -->
+      <div id="panelDefib">
+        <div class="energy-box">
+          <div class="lbl">Select Energy</div>
+          <div class="energy-disp" id="eDisp">200J</div>
+          <div class="e-btns"><button class="e-btn" onclick="chgEnergy(1)">&#9650;</button><button class="e-btn" onclick="chgEnergy(-1)">&#9660;</button></div>
+        </div>
+        <button class="d-btn btn-charge" id="chargeBtn" onclick="startCharge()">CHARGE</button>
+        <button class="d-btn btn-shock" id="shockBtn" onclick="shock()" disabled>SHOCK</button>
+        <button class="d-btn btn-disarm" onclick="disarm()">DISARM</button>
+      </div>
+      <!-- PACING -->
+      <div id="panelPacing" style="display:none">
+        <div class="pace-ctrl"><div class="lbl">Rate (ppm)</div>
+          <div class="pace-disp" id="prDisp">70</div>
+          <div class="e-btns"><button class="e-btn" onclick="chgPace('rate',5)">&#9650;</button><button class="e-btn" onclick="chgPace('rate',-5)">&#9660;</button></div>
+        </div>
+        <div class="pace-ctrl"><div class="lbl">Output (mA)</div>
+          <div class="pace-disp" id="poDisp">60</div>
+          <div class="e-btns"><button class="e-btn" onclick="chgPace('out',5)">&#9650;</button><button class="e-btn" onclick="chgPace('out',-5)">&#9660;</button></div>
+        </div>
+        <button class="pace-btn" id="paceBtn" onclick="togglePace()">START PACING</button>
+      </div>
+      <!-- AED -->
+      <div id="panelAed" style="display:none">
+        <div class="aed-status" id="aedStatus">AED READY<br>Attach pads to patient</div>
+        <button class="d-btn btn-aed" onclick="aedAnalyze()" style="margin-top:8px">ANALYZE</button>
+        <button class="d-btn btn-shock" id="aedShockBtn" onclick="aedShock()" disabled style="margin-top:6px">SHOCK</button>
+      </div>
+      <!-- Sync row (always visible) -->
+      <div class="sync-row">
+        <div class="sync-lbl">SYNC</div>
+        <div class="toggle" id="syncTgl" onclick="toggleSync()"><div class="knob"></div></div>
+        <button class="lock-btn" onclick="toggleLock()">&#128274;</button>
+      </div>
+    </div>
+    <!-- Waveform area -->
+    <div class="wave-area" id="waveArea">
+      <div class="wave-row"><div class="wave-cc"><canvas id="cEcg"></canvas><div class="ectopic-indicator" id="ectInd"></div></div>
+        <div class="vital-box"><div class="v-lbl" style="color:var(--green)">HR</div><div class="v-val" style="color:var(--green)" id="vHR">--</div></div></div>
+      <div class="wave-row"><div class="wave-cc"><canvas id="cSpo2"></canvas></div>
+        <div class="vital-box"><div class="v-lbl" style="color:var(--yellow)">SpO2</div><div class="v-val" style="color:var(--yellow)" id="vSpo2">--</div></div></div>
+      <div class="wave-row"><div class="wave-cc"><canvas id="cAbp"></canvas></div>
+        <div class="vital-box"><div class="v-lbl" style="color:var(--red)">ABP</div><div class="v-val small" style="color:var(--red)" id="vAbp">--/--</div>
+          <div class="v-sub" style="color:var(--red)">MAP <span id="vMap">(--)</span></div></div></div>
+      <div class="wave-row"><div class="wave-cc"><canvas id="cCo2"></canvas></div>
+        <div class="vital-box"><div class="v-lbl" style="color:var(--white)">etCO2</div><div class="v-val small" style="color:var(--white)" id="vCo2">--</div>
+          <div class="unit-btns"><button class="u-btn on" onclick="co2U('mmHg',this)">mmHg</button><button class="u-btn" onclick="co2U('kPa',this)">kPa</button></div></div></div>
+      <div class="wave-row"><div class="wave-cc"><canvas id="cResp"></canvas></div>
+        <div class="vital-box"><div class="v-lbl" style="color:var(--white)">RR</div><div class="v-val small" style="color:var(--white)" id="vRR">--</div></div></div>
+      <!-- Side panels -->
+      <div class="side-panel" id="spScenario">
+        <div class="sp-head"><h3>Scenario Controls</h3><button class="sp-close" onclick="closePanel('spScenario')">&#10005;</button></div>
+        <div class="sp-body" id="scenarioBody"></div>
+      </div>
+      <div class="side-panel" id="spAlarms">
+        <div class="sp-head"><h3>Alarm Settings</h3><button class="sp-close" onclick="closePanel('spAlarms')">&#10005;</button></div>
+        <div class="sp-body" id="alarmBody"></div>
+      </div>
+      <div class="side-panel" id="spChecklist">
+        <div class="sp-head"><h3>Assessment Checklist</h3><button class="sp-close" onclick="closePanel('spChecklist')">&#10005;</button></div>
+        <div class="sp-body" id="checkBody"></div>
+      </div>
+    </div>
+  </div>
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <button class="tb-btn" onclick="togglePanel('spScenario')"><span class="ico">&#9881;</span>Scenarios</button>
+    <button class="tb-btn" onclick="openView('viewVent')"><span class="ico">&#127788;</span>Ventilator</button>
+    <button class="tb-btn" id="nibpBtn" onclick="doNIBP()"><span class="ico">&#129658;</span>Start NIBP</button>
+    <button class="tb-btn" onclick="togglePanel('spAlarms')"><span class="ico">&#9888;</span>Alarms</button>
+    <button class="tb-btn" id="muteBtn" onclick="muteAlarms()"><span class="ico">&#128276;</span>Mute</button>
+    <button class="tb-vitals tb-btn" onclick="open12Lead()"><span class="ico">&#9829;</span>12-Lead</button>
+    <button class="tb-btn" onclick="openView('viewChart')"><span class="ico">&#128203;</span>Chart</button>
+    <button class="tb-btn" onclick="openView('viewCtrl')"><span class="ico">&#127891;</span>Control</button>
+    <button class="tb-btn" onclick="togglePanel('spChecklist')"><span class="ico">&#9745;</span>Assess</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+  VIEW: VENTILATOR
+═══════════════════════════════════════════════════════════ -->
+<div class="view" id="viewVent">
+  <div class="top-bar">
+    <div class="left"><div class="dot"></div><span>SIM-01</span>
+      <span class="mode-badge" style="background:var(--cyan);color:#000">VENTILATOR</span></div>
+    <div><button class="sp-close" onclick="openView('viewMonitor')" style="color:var(--white);font-size:14px">&#10005; Close</button></div>
+  </div>
+  <div class="vent-main">
+    <div class="vent-controls">
+      <h4 style="color:var(--cyan);font-size:14px;margin-bottom:8px">Ventilator Mode</h4>
+      <button class="vent-mode-btn on" onclick="ventMode('acvc',this)" id="vmACVC">AC/VC - Volume Control</button>
+      <button class="vent-mode-btn" onclick="ventMode('acpc',this)">AC/PC - Pressure Control</button>
+      <button class="vent-mode-btn" onclick="ventMode('simv',this)">SIMV</button>
+      <button class="vent-mode-btn" onclick="ventMode('psv',this)">PSV - Pressure Support</button>
+      <button class="vent-mode-btn" onclick="ventMode('cpap',this)">CPAP</button>
+      <h4 style="color:var(--cyan);font-size:14px;margin:12px 0 8px">Parameters</h4>
+      <div class="sg"><label>Tidal Volume: <span id="vtVal">500</span> mL</label>
+        <input type="range" min="200" max="800" value="500" oninput="S.vent.vt=+this.value;$('vtVal').textContent=this.value"></div>
+      <div class="sg"><label>Resp Rate: <span id="vrrVal">14</span> /min</label>
+        <input type="range" min="6" max="40" value="14" oninput="S.vent.rate=+this.value;$('vrrVal').textContent=this.value"></div>
+      <div class="sg"><label>PEEP: <span id="peepVal">5</span> cmH2O</label>
+        <input type="range" min="0" max="20" value="5" oninput="S.vent.peep=+this.value;$('peepVal').textContent=this.value"></div>
+      <div class="sg"><label>FiO2: <span id="fio2Val">40</span>%</label>
+        <input type="range" min="21" max="100" value="40" oninput="S.vent.fio2=+this.value;$('fio2Val').textContent=this.value"></div>
+      <div class="sg"><label>I:E Ratio: 1:<span id="ieVal">2.0</span></label>
+        <input type="range" min="10" max="40" value="20" oninput="S.vent.ie=this.value/10;$('ieVal').textContent=(this.value/10).toFixed(1)"></div>
+      <div class="sg"><label>Peak Pressure: <span id="pipVal">20</span> cmH2O</label>
+        <input type="range" min="10" max="50" value="20" oninput="S.vent.pip=+this.value;$('pipVal').textContent=this.value"></div>
+      <h4 style="color:var(--red);font-size:14px;margin:12px 0 8px">Lung Conditions</h4>
+      <button class="incident-btn" onclick="lungCond('normal',this)">Normal</button>
+      <button class="incident-btn" onclick="lungCond('ards',this)">ARDS</button>
+      <button class="incident-btn" onclick="lungCond('asthma',this)">Asthma</button>
+      <button class="incident-btn" onclick="lungCond('copd',this)">COPD</button>
+      <button class="incident-btn" onclick="lungCond('covid',this)">COVID-19</button>
+      <button class="incident-btn" onclick="lungCond('fibrosis',this)">Pulmonary Fibrosis</button>
+      <button class="incident-btn" onclick="lungCond('pneumo',this)">Pneumothorax</button>
+      <button class="incident-btn" onclick="lungCond('broncho',this)">Bronchospasm</button>
+    </div>
+    <div class="vent-display">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+        <div class="vent-param"><div class="lbl">Vt (mL)</div><div class="val" id="vdVt">500</div></div>
+        <div class="vent-param"><div class="lbl">RR (/min)</div><div class="val" id="vdRR">14</div></div>
+        <div class="vent-param"><div class="lbl">PIP (cmH2O)</div><div class="val" id="vdPIP">20</div></div>
+        <div class="vent-param"><div class="lbl">PEEP (cmH2O)</div><div class="val" id="vdPEEP">5</div></div>
+        <div class="vent-param"><div class="lbl">FiO2 (%)</div><div class="val" id="vdFiO2">40</div></div>
+        <div class="vent-param"><div class="lbl">MV (L/min)</div><div class="val" id="vdMV">7.0</div></div>
+        <div class="vent-param"><div class="lbl">I:E</div><div class="val" id="vdIE">1:2.0</div></div>
+        <div class="vent-param"><div class="lbl">Compliance</div><div class="val" id="vdCompl">50</div><div class="unit">mL/cmH2O</div></div>
+      </div>
+      <div class="vent-waves">
+        <div class="vent-wave"><canvas id="cVentP"></canvas><div class="vent-wave-label" style="color:var(--cyan)">Pressure (cmH2O)</div></div>
+        <div class="vent-wave"><canvas id="cVentF"></canvas><div class="vent-wave-label" style="color:var(--yellow)">Flow (L/min)</div></div>
+        <div class="vent-wave"><canvas id="cVentV"></canvas><div class="vent-wave-label" style="color:var(--green)">Volume (mL)</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+  VIEW: INSTRUCTOR CONTROL
+═══════════════════════════════════════════════════════════ -->
+<div class="view" id="viewCtrl">
+  <div class="top-bar">
+    <div class="left"><div class="dot"></div><span>SIM-01</span>
+      <span class="mode-badge" style="background:var(--orange);color:#000">INSTRUCTOR CONTROL</span></div>
+    <div><button class="sp-close" onclick="openView('viewMonitor')" style="color:var(--white);font-size:14px">&#10005; Back to Monitor</button></div>
+  </div>
+  <div class="ctrl-main">
+    <div class="ctrl-left">
+      <div class="ctrl-section">
+        <h4>&#9829; Vital Parameters</h4>
+        <div class="ctrl-grid" id="ctrlVitals"></div>
+      </div>
+      <div class="ctrl-section">
+        <h4>&#9835; ECG Rhythm</h4>
+        <div id="ctrlRhythms" style="display:flex;flex-wrap:wrap;gap:4px"></div>
+      </div>
+      <div class="ctrl-section">
+        <h4>&#9889; Ectopics &amp; Artifacts</h4>
+        <div id="ctrlEctopics" style="display:flex;flex-wrap:wrap;gap:4px"></div>
+      </div>
+    </div>
+    <div class="ctrl-right">
+      <div class="ctrl-section">
+        <h4>&#9888; Patient Incidents</h4>
+        <div id="ctrlIncidents"></div>
+      </div>
+      <div class="ctrl-section">
+        <h4>&#128203; Scenario Presets</h4>
+        <div id="ctrlPresets"></div>
+      </div>
+      <div class="ctrl-section">
+        <h4>&#128221; Event Log</h4>
+        <div class="event-log" id="eventLog"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+  VIEW: PATIENT CHART
+═══════════════════════════════════════════════════════════ -->
+<div class="view" id="viewChart">
+  <div class="top-bar">
+    <div class="left"><div class="dot"></div><span>SIM-01</span>
+      <span class="mode-badge" style="background:var(--purple);color:#fff">PATIENT CHART</span></div>
+    <div><button class="sp-close" onclick="openView('viewMonitor')" style="color:var(--white);font-size:14px">&#10005; Back to Monitor</button></div>
+  </div>
+  <div class="chart-main">
+    <div class="chart-nav">
+      <button class="chart-nav-btn on" onclick="chartTab('summary',this)">&#128203; Summary</button>
+      <button class="chart-nav-btn" onclick="chartTab('labs',this)">&#129514; Lab Results</button>
+      <button class="chart-nav-btn" onclick="chartTab('ecg12',this)">&#9829; 12-Lead ECG</button>
+      <button class="chart-nav-btn" onclick="chartTab('radiology',this)">&#128248; Radiology</button>
+      <button class="chart-nav-btn" onclick="chartTab('vitals-hist',this)">&#128200; Vitals History</button>
+      <button class="chart-nav-btn" onclick="chartTab('meds',this)">&#128138; Medications</button>
+    </div>
+    <div class="chart-content" id="chartContent"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+  12-LEAD ECG MODAL
+═══════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal12Lead">
+  <div class="modal">
+    <div class="modal-head"><h2>&#9829; 12-Lead ECG</h2>
+      <button class="sp-close" onclick="close12Lead()">&#10005;</button></div>
+    <div class="modal-body">
+      <div class="ecg12-grid" id="ecg12Grid"></div>
+      <div style="margin-top:12px;text-align:center;color:#888;font-size:12px">
+        Speed: 25mm/s | Gain: 10mm/mV | Filter: 0.05-150Hz
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Overlays -->
+<div class="charge-ov" id="chargeOv"><div class="charge-txt" id="chargeTxt">CHARGING... 0J</div>
+  <div class="charge-bar-c"><div class="charge-bar" id="chargeBar"></div></div></div>
+<div class="shock-flash" id="shockFlash"></div>
+
+<!-- ═══════════════════════════════════════════════════════════
+  JAVASCRIPT ENGINE
+═══════════════════════════════════════════════════════════ -->
+<script>
+// ── Helpers ──
+const $=id=>document.getElementById(id);
+const qs=(s,p)=>(p||document).querySelectorAll(s);
+
+// ══════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════
+const S={
+  // Vitals
+  hr:72,spo2:98,sys:120,dia:80,etco2:35,rr:16,temp:36.8,
+  // Rhythm
+  rhythm:'nsr',
+  // Ectopics
+  ectPVC:0,ectPAC:0,ectPJC:0,artifact:0,
+  // Defib
+  energy:200,eIdx:6,eLevels:[50,70,100,120,150,170,200,250,300,360],
+  charging:false,charged:false,sync:false,locked:false,
+  // Pacing
+  pacing:false,paceRate:70,paceOut:60,
+  // AED
+  aedState:'ready',
+  // Alarms
+  alarmsOn:true,muted:false,
+  alarmLimits:{hrHi:150,hrLo:40,spo2Lo:90,sysHi:200,sysLo:80,co2Hi:50,co2Lo:20,rrHi:30,rrLo:8},
+  // NIBP
+  nibpRunning:false,
+  // Ventilator
+  vent:{mode:'acvc',vt:500,rate:14,peep:5,fio2:40,ie:2.0,pip:20,compliance:50,lung:'normal'},
+  // etCO2 unit
+  co2Unit:'mmHg',
+  // Incidents
+  incidents:[],
+  // Event log
+  events:[],
+  // Vitals history
+  vitalsHist:[],
+  // Chart tab
+  chartTab:'summary',
+};
+
+// ══════════════════════════════════════════════════════════
+// RHYTHMS DATABASE
+// ══════════════════════════════════════════════════════════
+const RHYTHMS={
+  nsr:{name:'Normal Sinus Rhythm',cat:'Sinus',hr:[60,100]},
+  st:{name:'Sinus Tachycardia',cat:'Sinus',hr:[100,180]},
+  sb:{name:'Sinus Bradycardia',cat:'Sinus',hr:[30,59]},
+  sa:{name:'Sinus Arrhythmia',cat:'Sinus',hr:[50,100]},
+  af:{name:'Atrial Fibrillation',cat:'Atrial',hr:[80,180]},
+  afl:{name:'Atrial Flutter',cat:'Atrial',hr:[130,170]},
+  svt:{name:'SVT',cat:'Atrial',hr:[150,250]},
+  wpw:{name:'WPW',cat:'Atrial',hr:[120,200]},
+  junctional:{name:'Junctional Rhythm',cat:'Junctional',hr:[40,60]},
+  avb1:{name:'1st Degree AV Block',cat:'Conduction',hr:[50,90]},
+  avb2m:{name:'2nd Degree Mobitz I',cat:'Conduction',hr:[40,80]},
+  avb2t2:{name:'2nd Degree Mobitz II',cat:'Conduction',hr:[35,70]},
+  avb3:{name:'3rd Degree AV Block',cat:'Conduction',hr:[25,50]},
+  vt:{name:'Ventricular Tachycardia',cat:'Ventricular',hr:[150,250]},
+  vf:{name:'Ventricular Fibrillation',cat:'Ventricular',hr:[0,0]},
+  torsades:{name:'Torsades de Pointes',cat:'Ventricular',hr:[150,300]},
+  ivr:{name:'Idioventricular Rhythm',cat:'Ventricular',hr:[20,40]},
+  asystole:{name:'Asystole',cat:'Arrest',hr:[0,0]},
+  pea:{name:'PEA',cat:'Arrest',hr:[20,60]},
+  paced:{name:'Paced Rhythm',cat:'Paced',hr:[60,80]},
+  stemi_ant:{name:'STEMI Anterior',cat:'STEMI',hr:[60,110]},
+  stemi_inf:{name:'STEMI Inferior',cat:'STEMI',hr:[50,90]},
+  stemi_lat:{name:'STEMI Lateral',cat:'STEMI',hr:[60,100]},
+  nstemi:{name:'NSTEMI',cat:'ACS',hr:[60,100]},
+  hyperK:{name:'Hyperkalemia',cat:'Metabolic',hr:[40,80]},
+  hypoK:{name:'Hypokalemia',cat:'Metabolic',hr:[60,100]},
+  longqt:{name:'Long QT',cat:'Metabolic',hr:[50,80]},
+  brugada:{name:'Brugada Pattern',cat:'Other',hr:[50,80]},
+  pe:{name:'Right Heart Strain (PE)',cat:'Other',hr:[90,130]},
+  hypothermia:{name:'Hypothermia (Osborn)',cat:'Other',hr:[30,60]},
+};
+
+// ══════════════════════════════════════════════════════════
+// SCENARIOS
+// ══════════════════════════════════════════════════════════
+const SCENARIOS=[
+  {name:'Healthy Adult',rhythm:'nsr',hr:72,spo2:98,sys:120,dia:80,co2:35,rr:16},
+  {name:'Sinus Tachycardia',rhythm:'st',hr:140,spo2:96,sys:100,dia:65,co2:30,rr:22},
+  {name:'Sinus Bradycardia',rhythm:'sb',hr:42,spo2:95,sys:90,dia:55,co2:38,rr:12},
+  {name:'Atrial Fibrillation',rhythm:'af',hr:125,spo2:93,sys:105,dia:70,co2:32,rr:18},
+  {name:'Atrial Flutter',rhythm:'afl',hr:150,spo2:94,sys:100,dia:60,co2:30,rr:20},
+  {name:'SVT',rhythm:'svt',hr:185,spo2:91,sys:85,dia:55,co2:28,rr:22},
+  {name:'Ventricular Tachycardia',rhythm:'vt',hr:180,spo2:82,sys:70,dia:40,co2:20,rr:8},
+  {name:'Ventricular Fibrillation',rhythm:'vf',hr:0,spo2:0,sys:0,dia:0,co2:0,rr:0},
+  {name:'Torsades de Pointes',rhythm:'torsades',hr:200,spo2:70,sys:50,dia:30,co2:15,rr:4},
+  {name:'Asystole',rhythm:'asystole',hr:0,spo2:0,sys:0,dia:0,co2:0,rr:0},
+  {name:'PEA',rhythm:'pea',hr:40,spo2:75,sys:0,dia:0,co2:12,rr:6},
+  {name:'3rd Degree AV Block',rhythm:'avb3',hr:35,spo2:89,sys:80,dia:50,co2:25,rr:14},
+  {name:'STEMI Anterior',rhythm:'stemi_ant',hr:95,spo2:94,sys:90,dia:60,co2:30,rr:20},
+  {name:'STEMI Inferior',rhythm:'stemi_inf',hr:55,spo2:95,sys:95,dia:65,co2:33,rr:16},
+  {name:'Pulmonary Embolism',rhythm:'pe',hr:120,spo2:85,sys:90,dia:60,co2:22,rr:28},
+  {name:'Hyperkalemia',rhythm:'hyperK',hr:55,spo2:96,sys:110,dia:70,co2:34,rr:16},
+  {name:'Septic Shock',rhythm:'st',hr:130,spo2:88,sys:75,dia:40,co2:18,rr:28},
+  {name:'Anaphylaxis',rhythm:'st',hr:145,spo2:82,sys:60,dia:35,co2:15,rr:30},
+  {name:'Tension Pneumothorax',rhythm:'st',hr:135,spo2:78,sys:70,dia:45,co2:48,rr:32},
+  {name:'COVID-19 Pneumonia',rhythm:'st',hr:110,spo2:84,sys:100,dia:65,co2:30,rr:26},
+];
+
+// ══════════════════════════════════════════════════════════
+// INCIDENTS
+// ══════════════════════════════════════════════════════════
+const INCIDENTS=[
+  {id:'broncho',name:'Bronchospasm',effects:{spo2:-8,co2:10,rr:8}},
+  {id:'pneumo',name:'Pneumothorax',effects:{spo2:-15,sys:-30,hr:25,rr:10}},
+  {id:'pe_inc',name:'Pulmonary Embolism',effects:{spo2:-12,sys:-20,hr:30,co2:-10,rr:10}},
+  {id:'tamponade',name:'Cardiac Tamponade',effects:{sys:-40,hr:20,spo2:-5}},
+  {id:'anaphylaxis',name:'Anaphylaxis',effects:{sys:-50,hr:40,spo2:-15,rr:12}},
+  {id:'hemorrhage',name:'Hemorrhage',effects:{sys:-35,hr:30,spo2:-5,rr:6}},
+  {id:'laryngo',name:'Laryngospasm',effects:{spo2:-20,co2:15,rr:-5}},
+  {id:'malignant_ht',name:'Malignant Hyperthermia',effects:{hr:30,co2:20,rr:8,temp:2}},
+];
+
+// ══════════════════════════════════════════════════════════
+// LAB DATA
+// ══════════════════════════════════════════════════════════
+const LABS={
+  'Hematology':[
+    {name:'Hemoglobin',val:14.2,unit:'g/dL',lo:12,hi:17.5},
+    {name:'Hematocrit',val:42,unit:'%',lo:36,hi:54},
+    {name:'WBC',val:7.8,unit:'x10³/µL',lo:4.5,hi:11},
+    {name:'Platelets',val:245,unit:'x10³/µL',lo:150,hi:400},
+    {name:'RBC',val:4.9,unit:'x10⁶/µL',lo:4.2,hi:5.9},
+  ],
+  'Metabolic Panel':[
+    {name:'Sodium',val:140,unit:'mmol/L',lo:136,hi:145},
+    {name:'Potassium',val:4.2,unit:'mmol/L',lo:3.5,hi:5.1},
+    {name:'Chloride',val:102,unit:'mmol/L',lo:98,hi:106},
+    {name:'CO2',val:24,unit:'mmol/L',lo:21,hi:31},
+    {name:'BUN',val:15,unit:'mg/dL',lo:7,hi:20},
+    {name:'Creatinine',val:1.0,unit:'mg/dL',lo:0.6,hi:1.2},
+    {name:'Glucose',val:95,unit:'mg/dL',lo:70,hi:100},
+    {name:'Calcium',val:9.4,unit:'mg/dL',lo:8.5,hi:10.5},
+  ],
+  'Cardiac Markers':[
+    {name:'Troponin I',val:0.02,unit:'ng/mL',lo:0,hi:0.04},
+    {name:'CK-MB',val:3.2,unit:'ng/mL',lo:0,hi:5},
+    {name:'BNP',val:45,unit:'pg/mL',lo:0,hi:100},
+    {name:'D-dimer',val:0.3,unit:'µg/mL',lo:0,hi:0.5},
+  ],
+  'Blood Gas':[
+    {name:'pH',val:7.40,unit:'',lo:7.35,hi:7.45},
+    {name:'pCO2',val:40,unit:'mmHg',lo:35,hi:45},
+    {name:'pO2',val:95,unit:'mmHg',lo:80,hi:100},
+    {name:'HCO3',val:24,unit:'mmol/L',lo:22,hi:26},
+    {name:'Base Excess',val:0,unit:'mmol/L',lo:-2,hi:2},
+    {name:'Lactate',val:1.0,unit:'mmol/L',lo:0.5,hi:2.0},
+  ],
+  'Coagulation':[
+    {name:'PT',val:12.5,unit:'sec',lo:11,hi:13.5},
+    {name:'INR',val:1.0,unit:'',lo:0.8,hi:1.1},
+    {name:'aPTT',val:30,unit:'sec',lo:25,hi:35},
+  ],
+};
+
+// ══════════════════════════════════════════════════════════
+// CHECKLIST
+// ══════════════════════════════════════════════════════════
+const CHECKLIST=[
+  'Scene safety assessed','PPE donned','Primary survey (ABCDE)','Airway patent','Breathing assessed',
+  'Circulation assessed','Pulse check performed','Monitor attached','IV/IO access established',
+  'Rhythm identified','Correct treatment protocol','Medications given correctly',
+  'Defibrillation at correct energy','Effective CPR (rate & depth)','Post-ROSC care initiated',
+  'Team communication effective','Handover completed (SBAR)',
+];
+
+// ══════════════════════════════════════════════════════════
+// AUDIO
+// ══════════════════════════════════════════════════════════
+let audioCtx=null;
+function ensureAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)()}
+function beep(freq,dur,vol=.08){
+  ensureAudio();const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.connect(g);g.connect(audioCtx.destination);o.frequency.value=freq;g.gain.value=vol;
+  o.start();g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+dur);o.stop(audioCtx.currentTime+dur);
+}
+document.addEventListener('click',()=>ensureAudio(),{once:true});
+
+// ══════════════════════════════════════════════════════════
+// EVENT LOGGING
+// ══════════════════════════════════════════════════════════
+function logEvent(msg,level='info'){
+  const t=new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  S.events.unshift({time:t,msg,level});
+  if(S.events.length>200)S.events.length=200;
+  renderEventLog();
+}
+function renderEventLog(){
+  const el=$('eventLog');if(!el)return;
+  el.innerHTML=S.events.slice(0,50).map(e=>
+    `<div class="log-entry"><span class="log-time">${e.time}</span><span class="log-msg ${e.level==='warn'?'warn':e.level==='crit'?'crit':''}">${e.msg}</span></div>`
+  ).join('');
+}
+
+// ══════════════════════════════════════════════════════════
+// VIEW SWITCHING
+// ══════════════════════════════════════════════════════════
+function openView(id){
+  qs('.view').forEach(v=>v.classList.remove('active'));
+  $(id).classList.add('active');
+  if(id==='viewVent')initVentCanvases();
+  if(id==='viewCtrl')buildCtrlView();
+  if(id==='viewChart')renderChart();
+}
+
+// ══════════════════════════════════════════════════════════
+// SKIN
+// ══════════════════════════════════════════════════════════
+function setSkin(cls){
+  document.body.className=cls;
+  logEvent('Monitor skin: '+(cls||'Generic'));
+}
+
+// ══════════════════════════════════════════════════════════
+// MONITOR TABS
+// ══════════════════════════════════════════════════════════
+function monTab(tab,btn){
+  qs('.tabs .tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  $('panelDefib').style.display=tab==='defib'?'':'none';
+  $('panelPacing').style.display=tab==='pacing'?'':'none';
+  $('panelAed').style.display=tab==='aed'?'':'none';
+}
+
+// ══════════════════════════════════════════════════════════
+// SIDE PANELS
+// ══════════════════════════════════════════════════════════
+function togglePanel(id){
+  const p=$(id);
+  const isOpen=p.classList.contains('open');
+  qs('.side-panel').forEach(sp=>sp.classList.remove('open'));
+  if(!isOpen){p.classList.add('open');if(id==='spScenario')buildScenarioPanel();if(id==='spAlarms')buildAlarmPanel();if(id==='spChecklist')buildCheckPanel()}
+}
+function closePanel(id){$(id).classList.remove('open')}
+
+// ══════════════════════════════════════════════════════════
+// ENERGY / CHARGE / SHOCK / DISARM
+// ══════════════════════════════════════════════════════════
+function chgEnergy(d){
+  S.eIdx=Math.max(0,Math.min(S.eLevels.length-1,S.eIdx+d));
+  S.energy=S.eLevels[S.eIdx];$('eDisp').textContent=S.energy+'J';
+  if(S.charged)disarm();beep(600+d*100,.08);
+}
+function startCharge(){
+  if(S.charging||S.charged)return;S.charging=true;ensureAudio();
+  $('chargeBtn').classList.add('charging');
+  const ov=$('chargeOv'),bar=$('chargeBar'),txt=$('chargeTxt');ov.classList.add('show');
+  let p=0;const tgt=S.energy;
+  logEvent('Charging '+tgt+'J...','warn');
+  const iv=setInterval(()=>{
+    p+=2;if(p>100)p=100;bar.style.width=p+'%';txt.textContent='CHARGING... '+Math.round(tgt*p/100)+'J';
+    beep(400+p*4,.05,.04);
+    if(p>=100){clearInterval(iv);S.charging=false;S.charged=true;$('chargeBtn').classList.remove('charging');
+      ov.classList.remove('show');$('shockBtn').disabled=false;$('shockBtn').classList.add('charged');
+      beep(1000,.3,.12);logEvent('Charged '+tgt+'J','warn')}
+  },30);
+}
+function shock(){
+  if(!S.charged)return;ensureAudio();S.charged=false;
+  $('shockBtn').disabled=true;$('shockBtn').classList.remove('charged');
+  $('shockFlash').classList.add('flash');setTimeout(()=>$('shockFlash').classList.remove('flash'),400);
+  beep(200,.15,.3);setTimeout(()=>beep(100,.1,.3),50);
+  logEvent('SHOCK delivered: '+S.energy+'J'+(S.sync?' (SYNC)':''),'crit');
+  // Brief flatline then maybe convert
+  const prev={r:S.rhythm,hr:S.hr,spo2:S.spo2,sys:S.sys,dia:S.dia};
+  S.rhythm='asystole';S.hr=0;
+  setTimeout(()=>{
+    if(['vf','vt','torsades'].includes(prev.r)){S.rhythm='nsr';S.hr=72;S.spo2=96;S.sys=110;S.dia=70;
+      logEvent('ROSC achieved','info')}
+    else{S.rhythm=prev.r;S.hr=prev.hr;S.spo2=prev.spo2;S.sys=prev.sys;S.dia=prev.dia}
+  },2000);
+}
+function disarm(){
+  S.charging=false;S.charged=false;$('chargeBtn').classList.remove('charging');
+  $('shockBtn').disabled=true;$('shockBtn').classList.remove('charged');
+  $('chargeOv').classList.remove('show');beep(300,.1);logEvent('Disarmed');
+}
+
+// ══════════════════════════════════════════════════════════
+// SYNC / LOCK
+// ══════════════════════════════════════════════════════════
+function toggleSync(){S.sync=!S.sync;$('syncTgl').classList.toggle('on',S.sync);beep(S.sync?800:400,.08);logEvent('Sync '+(S.sync?'ON':'OFF'))}
+function toggleLock(){S.locked=!S.locked;beep(600,.08)}
+
+// ══════════════════════════════════════════════════════════
+// PACING
+// ══════════════════════════════════════════════════════════
+function chgPace(t,d){
+  if(t==='rate'){S.paceRate=Math.max(30,Math.min(180,S.paceRate+d));$('prDisp').textContent=S.paceRate}
+  else{S.paceOut=Math.max(0,Math.min(200,S.paceOut+d));$('poDisp').textContent=S.paceOut}
+  beep(500,.05);
+}
+function togglePace(){
+  S.pacing=!S.pacing;const b=$('paceBtn');
+  b.textContent=S.pacing?'STOP PACING':'START PACING';b.classList.toggle('active',S.pacing);
+  if(S.pacing){S.rhythm='paced';S.hr=S.paceRate;logEvent('Pacing ON: '+S.paceRate+'ppm, '+S.paceOut+'mA')}
+  else{S.rhythm='nsr';S.hr=72;logEvent('Pacing OFF')}
+}
+
+// ══════════════════════════════════════════════════════════
+// AED
+// ══════════════════════════════════════════════════════════
+function aedAnalyze(){
+  const st=$('aedStatus'),sb=$('aedShockBtn');
+  S.aedState='analyzing';st.className='aed-status analyzing';st.innerHTML='ANALYZING...<br>Do not touch patient';
+  sb.disabled=true;beep(500,.1);logEvent('AED analyzing rhythm');
+  setTimeout(()=>{
+    const shockable=['vf','vt','torsades'].includes(S.rhythm);
+    if(shockable){S.aedState='shock-advised';st.className='aed-status shock-advised';
+      st.innerHTML='SHOCK ADVISED<br>Press SHOCK button';sb.disabled=false;
+      beep(880,.2,.15);logEvent('AED: Shock advised','crit')}
+    else{S.aedState='no-shock';st.className='aed-status';
+      st.innerHTML='NO SHOCK ADVISED<br>Continue CPR';sb.disabled=true;
+      logEvent('AED: No shock advised')}
+  },3000);
+}
+function aedShock(){
+  S.energy=200;shock();
+  $('aedStatus').className='aed-status';$('aedStatus').innerHTML='SHOCK DELIVERED<br>Continue CPR';
+  $('aedShockBtn').disabled=true;S.aedState='ready';
+}
+
+// ══════════════════════════════════════════════════════════
+// NIBP
+// ══════════════════════════════════════════════════════════
+function doNIBP(){
+  if(S.nibpRunning)return;S.nibpRunning=true;$('nibpBtn').style.borderColor='var(--orange)';
+  beep(600,.1);logEvent('NIBP measurement started');
+  setTimeout(()=>{S.nibpRunning=false;$('nibpBtn').style.borderColor='';
+    logEvent('NIBP: '+S.sys+'/'+S.dia+' mmHg (MAP '+(Math.round(S.dia+(S.sys-S.dia)/3))+')');beep(800,.15)},4000);
+}
+
+// ══════════════════════════════════════════════════════════
+// ALARMS
+// ══════════════════════════════════════════════════════════
+function muteAlarms(){S.muted=!S.muted;$('muteBtn').querySelector('.ico').textContent=S.muted?'&#128277;':'&#128276;';beep(400,.08)}
+
+function checkAlarms(){
+  const L=S.alarmLimits;let msgs=[];let lvl='';
+  if(S.hr>L.hrHi){msgs.push('HR HIGH');lvl='crit'}
+  if(S.hr>0&&S.hr<L.hrLo){msgs.push('HR LOW');lvl='crit'}
+  if(S.spo2>0&&S.spo2<L.spo2Lo){msgs.push('SpO2 LOW');lvl=lvl||'crit'}
+  if(S.sys>L.sysHi){msgs.push('BP HIGH');lvl=lvl||'warn'}
+  if(S.sys>0&&S.sys<L.sysLo){msgs.push('BP LOW');lvl=lvl||'crit'}
+  if(S.rhythm==='asystole'){msgs.push('ASYSTOLE');lvl='crit'}
+  if(S.rhythm==='vf'){msgs.push('V-FIB');lvl='crit'}
+  if(S.rhythm==='vt'){msgs.push('V-TACH');lvl='crit'}
+  const bar=$('alarmBar');
+  if(msgs.length&&S.alarmsOn&&!S.muted){
+    bar.className='alarm-bar show'+(lvl==='warn'?' warn':'');
+    bar.textContent='⚠ ALARM: '+msgs.join(' | ')+' ⚠';
+    beep(lvl==='crit'?880:660,.1,.04);
+  }else{bar.classList.remove('show')}
+}
+
+// ══════════════════════════════════════════════════════════
+// CO2 UNIT
+// ══════════════════════════════════════════════════════════
+function co2U(u,btn){S.co2Unit=u;qs('.u-btn').forEach(b=>b.classList.remove('on'));btn.classList.add('on')}
+
+// ══════════════════════════════════════════════════════════
+// UPDATE VITALS DISPLAY
+// ══════════════════════════════════════════════════════════
+function updateVitals(){
+  // Apply incident effects
+  let hr=S.hr,spo2=S.spo2,sys=S.sys,dia=S.dia,co2=S.etco2,rr=S.rr;
+  S.incidents.forEach(inc=>{
+    const eff=INCIDENTS.find(i=>i.id===inc)?.effects||{};
+    if(eff.hr)hr+=eff.hr;if(eff.spo2)spo2+=eff.spo2;if(eff.sys)sys+=eff.sys;
+    if(eff.co2)co2+=eff.co2;if(eff.rr)rr+=eff.rr;
+  });
+  hr=Math.max(0,Math.min(300,hr));spo2=Math.max(0,Math.min(100,spo2));
+  sys=Math.max(0,Math.min(300,sys));dia=Math.max(0,Math.min(200,dia));
+  co2=Math.max(0,Math.min(80,co2));rr=Math.max(0,Math.min(50,rr));
+
+  const map=dia>0?Math.round(dia+(sys-dia)/3):0;
+
+  $('vHR').textContent=hr>0?hr:'--';
+  $('vSpo2').textContent=spo2>0?spo2:'--';
+  $('vAbp').textContent=sys>0?sys+'/'+dia:'--/--';
+  $('vMap').textContent=map>0?'('+map+')':'(--)';
+  $('vCo2').textContent=co2>0?(S.co2Unit==='kPa'?(co2*.133).toFixed(1):co2):'--';
+  $('vRR').textContent=rr>0?rr:'--';
+
+  // Ectopic indicator
+  const ects=[];if(S.ectPVC)ects.push('PVC');if(S.ectPAC)ects.push('PAC');if(S.ectPJC)ects.push('PJC');if(S.artifact)ects.push('ARTF');
+  $('ectInd').textContent=ects.join(' ');
+
+  // Connection dot
+  const d=$('connDot');
+  if(S.rhythm==='asystole'||S.rhythm==='vf'){d.className='dot crit'}
+  else if(hr<50||spo2<90){d.className='dot warn'}
+  else{d.className='dot'}
+
+  // Record history
+  if(S.vitalsHist.length===0||Date.now()-S.vitalsHist[S.vitalsHist.length-1].t>5000){
+    S.vitalsHist.push({t:Date.now(),hr,spo2,sys,dia,co2,rr});
+    if(S.vitalsHist.length>360)S.vitalsHist.shift();
+  }
+
+  checkAlarms();
+}
+
+// ══════════════════════════════════════════════════════════
+// CLOCK
+// ══════════════════════════════════════════════════════════
+function updClock(){$('clock').textContent=new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}
+setInterval(updClock,1000);updClock();
+
+// ══════════════════════════════════════════════════════════
+// BUILD PANELS
+// ══════════════════════════════════════════════════════════
+function buildScenarioPanel(){
+  let h='<div class="sg"><label style="font-size:13px;color:#fff;margin-bottom:8px">Scenario Presets</label>';
+  SCENARIOS.forEach((sc,i)=>{h+=`<button class="preset${S._scIdx===i?' active-preset':''}" onclick="loadScenario(${i})">${sc.name}</button>`});
+  h+='</div>';$('scenarioBody').innerHTML=h;
+}
+
+function buildAlarmPanel(){
+  const L=S.alarmLimits;
+  let h=`<div class="sg"><label>Alarms: </label>
+    <button class="d-btn" style="background:${S.alarmsOn?'var(--green)':'#666'};color:#000;padding:6px;font-size:13px" onclick="S.alarmsOn=!S.alarmsOn;buildAlarmPanel()">${S.alarmsOn?'ON':'OFF'}</button></div>`;
+  [['hrHi','HR High','bpm',40,250],['hrLo','HR Low','bpm',20,120],
+   ['spo2Lo','SpO2 Low','%',50,99],['sysHi','SBP High','mmHg',100,280],
+   ['sysLo','SBP Low','mmHg',40,150],['co2Hi','etCO2 High','mmHg',25,80],
+   ['rrHi','RR High','/min',15,50],['rrLo','RR Low','/min',4,20]
+  ].forEach(([k,lbl,u,mn,mx])=>{
+    h+=`<div class="sg"><label>${lbl}: <b>${L[k]}</b> ${u}</label>
+      <input type="range" min="${mn}" max="${mx}" value="${L[k]}" oninput="S.alarmLimits.${k}=+this.value;buildAlarmPanel()"></div>`;
+  });
+  $('alarmBody').innerHTML=h;
+}
+
+function buildCheckPanel(){
+  let h='<div style="margin-bottom:12px;color:#aaa;font-size:12px">Student assessment checklist</div>';
+  CHECKLIST.forEach((c,i)=>{
+    h+=`<div class="check-item"><input type="checkbox" id="chk${i}" onchange="logEvent('Checklist: ${c} '+(this.checked?'✓':'✗'))"><label for="chk${i}">${c}</label></div>`;
+  });
+  $('checkBody').innerHTML=h;
+}
+
+function loadScenario(i){
+  const sc=SCENARIOS[i];S._scIdx=i;
+  S.rhythm=sc.rhythm;S.hr=sc.hr;S.spo2=sc.spo2;S.sys=sc.sys;S.dia=sc.dia;S.etco2=sc.co2;S.rr=sc.rr;
+  S.incidents=[];
+  logEvent('Scenario loaded: '+sc.name,'warn');beep(700,.08);
+  buildScenarioPanel();
+  if($('viewCtrl').classList.contains('active'))buildCtrlView();
+}
+
+// ══════════════════════════════════════════════════════════
+// INSTRUCTOR CONTROL VIEW
+// ══════════════════════════════════════════════════════════
+function buildCtrlView(){
+  // Vitals
+  let vh='';
+  [['hr','Heart Rate','bpm',0,300],['spo2','SpO2','%',0,100],['sys','Systolic BP','mmHg',0,280],
+   ['dia','Diastolic BP','mmHg',0,180],['etco2','etCO2','mmHg',0,80],['rr','Resp Rate','/min',0,50],
+   ['temp','Temperature','°C',32,42]
+  ].forEach(([k,lbl,u,mn,mx])=>{
+    vh+=`<div class="ctrl-param"><label>${lbl} (${u})</label><div class="val-row">
+      <span class="cur-val" id="cv_${k}">${k==='temp'?S[k].toFixed(1):S[k]}</span>
+      <input type="range" min="${mn}" max="${mx}" value="${k==='temp'?S[k]*10:S[k]}" step="${k==='temp'?1:1}"
+        oninput="S.${k}=${k==='temp'?'this.value/10':'+this.value'};$('cv_${k}').textContent=${k==='temp'?'S.temp.toFixed(1)':'S.'+k}"></div></div>`;
+  });
+  $('ctrlVitals').innerHTML=vh;
+
+  // Rhythms
+  let rh='';
+  const cats={};Object.entries(RHYTHMS).forEach(([k,v])=>{if(!cats[v.cat])cats[v.cat]=[];cats[v.cat].push({k,...v})});
+  Object.entries(cats).forEach(([cat,rhythms])=>{
+    rh+=`<div style="width:100%;font-size:11px;color:#888;margin:4px 0 2px">${cat}</div>`;
+    rhythms.forEach(r=>{
+      rh+=`<button class="rhythm-btn${S.rhythm===r.k?' sel':''}" onclick="setRhythm('${r.k}',this)">${r.name}</button>`;
+    });
+  });
+  $('ctrlRhythms').innerHTML=rh;
+
+  // Ectopics
+  let eh='';
+  [['ectPVC','PVC'],['ectPAC','PAC'],['ectPJC','PJC'],['artifact','Artifact']].forEach(([k,lbl])=>{
+    eh+=`<div style="display:flex;align-items:center;gap:4px">
+      <button class="rhythm-btn${S[k]?' sel':''}" onclick="S.${k}=S.${k}?0:1;buildCtrlView();logEvent('${lbl} '+(S.${k}?'ON':'OFF'))">${lbl}</button>
+      ${S[k]?`<input type="range" min="1" max="10" value="${S[k]}" style="width:60px" oninput="S.${k}=+this.value">`:''}</div>`;
+  });
+  $('ctrlEctopics').innerHTML=eh;
+
+  // Incidents
+  let ih='';
+  INCIDENTS.forEach(inc=>{
+    const active=S.incidents.includes(inc.id);
+    ih+=`<button class="incident-btn${active?' active-inc':''}" onclick="toggleIncident('${inc.id}',this)">${inc.name}</button>`;
+  });
+  $('ctrlIncidents').innerHTML=ih;
+
+  // Presets
+  let ph='';
+  SCENARIOS.forEach((sc,i)=>{ph+=`<button class="preset${S._scIdx===i?' active-preset':''}" onclick="loadScenario(${i})">${sc.name}</button>`});
+  $('ctrlPresets').innerHTML=ph;
+
+  renderEventLog();
+}
+
+function setRhythm(r,btn){
+  S.rhythm=r;
+  const info=RHYTHMS[r];
+  if(info&&info.hr[0]>0&&(S.hr<info.hr[0]||S.hr>info.hr[1]))S.hr=Math.round((info.hr[0]+info.hr[1])/2);
+  logEvent('Rhythm: '+info.name);beep(600,.08);
+  buildCtrlView();
+}
+
+function toggleIncident(id){
+  const idx=S.incidents.indexOf(id);
+  if(idx>=0){S.incidents.splice(idx,1);logEvent('Incident resolved: '+INCIDENTS.find(i=>i.id===id).name)}
+  else{S.incidents.push(id);logEvent('Incident: '+INCIDENTS.find(i=>i.id===id).name,'crit')}
+  beep(500,.08);
+  if($('viewCtrl').classList.contains('active'))buildCtrlView();
+}
+
+// ══════════════════════════════════════════════════════════
+// PATIENT CHART
+// ══════════════════════════════════════════════════════════
+function chartTab(tab,btn){
+  S.chartTab=tab;
+  qs('.chart-nav-btn').forEach(b=>b.classList.remove('on'));if(btn)btn.classList.add('on');
+  renderChart();
+}
+
+function renderChart(){
+  const c=$('chartContent');
+  switch(S.chartTab){
+    case 'summary':
+      c.innerHTML=`<h3 style="margin-bottom:12px">Patient Summary</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div style="background:var(--bg2);padding:12px;border-radius:8px"><div style="color:#888;font-size:12px">Name</div><div style="font-size:16px;font-weight:600">Simulated Patient</div></div>
+          <div style="background:var(--bg2);padding:12px;border-radius:8px"><div style="color:#888;font-size:12px">Age / Sex</div><div style="font-size:16px;font-weight:600">55 / Male</div></div>
+          <div style="background:var(--bg2);padding:12px;border-radius:8px"><div style="color:#888;font-size:12px">Weight</div><div style="font-size:16px;font-weight:600">78 kg</div></div>
+          <div style="background:var(--bg2);padding:12px;border-radius:8px"><div style="color:#888;font-size:12px">Allergies</div><div style="font-size:16px;font-weight:600;color:var(--red)">Penicillin</div></div>
+          <div style="background:var(--bg2);padding:12px;border-radius:8px;grid-column:1/-1"><div style="color:#888;font-size:12px">Current Vitals</div>
+            <div style="font-size:14px;margin-top:6px">HR: <b style="color:var(--green)">${S.hr}</b> | SpO2: <b style="color:var(--yellow)">${S.spo2}%</b> | BP: <b style="color:var(--red)">${S.sys}/${S.dia}</b> | RR: <b>${S.rr}</b> | Temp: <b>${S.temp.toFixed(1)}°C</b></div>
+          </div>
+          <div style="background:var(--bg2);padding:12px;border-radius:8px;grid-column:1/-1"><div style="color:#888;font-size:12px">Active Rhythm</div>
+            <div style="font-size:16px;font-weight:600;color:var(--green)">${RHYTHMS[S.rhythm]?.name||S.rhythm}</div>
+          </div>
+          <div style="background:var(--bg2);padding:12px;border-radius:8px;grid-column:1/-1"><div style="color:#888;font-size:12px">History</div>
+            <div style="font-size:13px;margin-top:4px;color:#ccc">Hypertension, Type 2 Diabetes, Previous MI (2019), Hyperlipidemia</div>
+          </div>
+        </div>`;
+      break;
+    case 'labs':
+      let lh='<h3 style="margin-bottom:12px">Laboratory Results</h3>';
+      Object.entries(LABS).forEach(([cat,tests])=>{
+        lh+=`<h4 style="color:var(--blue);margin:12px 0 6px;font-size:14px">${cat}</h4><table class="lab-table"><tr><th>Test</th><th>Result</th><th>Reference</th><th>Unit</th></tr>`;
+        tests.forEach(t=>{
+          const abn=t.val<t.lo||t.val>t.hi;
+          lh+=`<tr><td>${t.name}</td><td class="${abn?'abnormal':'normal'}">${typeof t.val==='number'&&t.val%1?t.val.toFixed(2):t.val}</td><td>${t.lo} - ${t.hi}</td><td>${t.unit}</td></tr>`;
+        });
+        lh+='</table>';
+      });
+      c.innerHTML=lh;break;
+    case 'ecg12':
+      c.innerHTML='<h3 style="margin-bottom:12px">12-Lead ECG</h3><div class="ecg12-grid" id="ecg12ChartGrid"></div><div style="margin-top:8px;color:#888;font-size:11px">25mm/s | 10mm/mV | '+RHYTHMS[S.rhythm]?.name+'</div>';
+      setTimeout(init12LeadChart,100);break;
+    case 'radiology':
+      c.innerHTML=`<h3 style="margin-bottom:12px">Radiology Images</h3><div class="radio-grid">
+        ${['Chest X-Ray AP','Chest X-Ray Lat','CT Head','CT Chest','CT Abdomen','Ultrasound Heart','Ultrasound Lung','C-Spine X-Ray','Pelvis X-Ray'].map(r=>
+          `<div class="radio-card"><div class="radio-icon">&#128248;</div><div class="radio-lbl">${r}</div></div>`).join('')}
+      </div><div style="margin-top:12px;color:#888;font-size:12px">Click image to view full size. Images from simulation library.</div>`;
+      break;
+    case 'vitals-hist':
+      c.innerHTML='<h3 style="margin-bottom:12px">Vitals History</h3><canvas id="cVitalsHist" style="width:100%;height:400px;background:#000;border-radius:8px"></canvas>';
+      setTimeout(drawVitalsHistory,100);break;
+    case 'meds':
+      c.innerHTML=`<h3 style="margin-bottom:12px">Medication Administration</h3>
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+          ${['Epinephrine 1mg IV','Amiodarone 300mg IV','Atropine 0.5mg IV','Adenosine 6mg IV','Lidocaine 100mg IV',
+             'Magnesium 2g IV','NaHCO3 50mEq IV','Calcium Chloride 1g IV','Dopamine 5mcg/kg/min','Norepinephrine 0.1mcg/kg/min',
+             'Normal Saline 250mL','Glucose 50% 50mL'].map(m=>
+            `<button class="preset" style="width:auto;display:inline-block" onclick="adminMed('${m}')">${m}</button>`).join('')}
+        </div>
+        <h4 style="color:var(--blue);margin:12px 0 6px;font-size:14px">Administration Log</h4>
+        <div class="event-log" id="medLog" style="min-height:100px"></div>`;
+      renderMedLog();break;
+  }
+}
+
+const medLog=[];
+function adminMed(m){
+  const t=new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  medLog.unshift({time:t,med:m});logEvent('Med: '+m,'warn');beep(600,.1);
+  renderMedLog();
+  // Simulate drug effects
+  if(m.includes('Epinephrine')){S.hr=Math.min(S.hr+20,180);S.sys=Math.min(S.sys+20,200)}
+  if(m.includes('Atropine'))S.hr=Math.min(S.hr+15,120);
+  if(m.includes('Adenosine')){S.hr=Math.max(S.hr-40,30);setTimeout(()=>{S.hr=Math.min(S.hr+20,100)},3000)}
+  if(m.includes('Amiodarone')&&S.rhythm==='vt'){setTimeout(()=>{S.rhythm='nsr';S.hr=75;logEvent('Amiodarone effect: converted to NSR')},5000)}
+}
+function renderMedLog(){
+  const el=$('medLog');if(!el)return;
+  el.innerHTML=medLog.map(e=>`<div class="log-entry"><span class="log-time">${e.time}</span><span class="log-msg warn">${e.med}</span></div>`).join('')||'<div style="color:#666;padding:8px">No medications administered</div>';
+}
+
+// ══════════════════════════════════════════════════════════
+// VITALS HISTORY CHART
+// ══════════════════════════════════════════════════════════
+function drawVitalsHistory(){
+  const canvas=$('cVitalsHist');if(!canvas)return;
+  const r=canvas.parentElement;canvas.width=r.clientWidth*2;canvas.height=400*2;
+  canvas.style.width=r.clientWidth+'px';canvas.style.height='400px';
+  const ctx=canvas.getContext('2d');ctx.scale(2,2);
+  const w=r.clientWidth,h=400,data=S.vitalsHist;
+  if(data.length<2)return;
+  ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);
+  // Draw each vital
+  const draw=(arr,color,min,max)=>{
+    ctx.strokeStyle=color;ctx.lineWidth=1.5;ctx.beginPath();
+    arr.forEach((v,i)=>{const x=i/(arr.length-1)*w;const y=h-((v-min)/(max-min)*h*.8+h*.1);
+      i===0?ctx.moveTo(x,y):ctx.lineTo(x,y)});ctx.stroke();
+  };
+  draw(data.map(d=>d.hr),'#00ff41',0,200);
+  draw(data.map(d=>d.spo2),'#ffd700',50,100);
+  draw(data.map(d=>d.sys),'#ff3333',0,250);
+  // Legend
+  ctx.font='12px sans-serif';
+  [['HR','#00ff41',10],['SpO2','#ffd700',60],['SBP','#ff3333',120]].forEach(([l,c,x])=>{
+    ctx.fillStyle=c;ctx.fillRect(x,8,12,12);ctx.fillStyle='#aaa';ctx.fillText(l,x+16,18);
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+// 12-LEAD ECG
+// ══════════════════════════════════════════════════════════
+const LEADS_12=['I','II','III','aVR','aVL','aVF','V1','V2','V3','V4','V5','V6'];
+function open12Lead(){$('modal12Lead').classList.add('open');setTimeout(init12LeadModal,100)}
+function close12Lead(){$('modal12Lead').classList.remove('open')}
+function init12LeadModal(){
+  const grid=$('ecg12Grid');grid.innerHTML='';
+  LEADS_12.forEach(lead=>{
+    const cell=document.createElement('div');cell.className='ecg12-cell';
+    const canvas=document.createElement('canvas');cell.appendChild(canvas);
+    const lbl=document.createElement('div');lbl.className='ecg12-label';lbl.textContent=lead;cell.appendChild(lbl);
+    grid.appendChild(cell);
+    drawStaticECG(canvas,lead);
+  });
+}
+function init12LeadChart(){
+  const grid=$('ecg12ChartGrid');if(!grid)return;grid.innerHTML='';
+  LEADS_12.forEach(lead=>{
+    const cell=document.createElement('div');cell.className='ecg12-cell';
+    const canvas=document.createElement('canvas');cell.appendChild(canvas);
+    const lbl=document.createElement('div');lbl.className='ecg12-label';lbl.textContent=lead;cell.appendChild(lbl);
+    grid.appendChild(cell);
+    drawStaticECG(canvas,lead);
+  });
+}
+function drawStaticECG(canvas,lead){
+  const w=canvas.parentElement.clientWidth,h=canvas.parentElement.clientHeight;
+  canvas.width=w*2;canvas.height=h*2;canvas.style.width=w+'px';canvas.style.height=h+'px';
+  const ctx=canvas.getContext('2d');ctx.scale(2,2);
+  ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);
+  // Grid
+  ctx.strokeStyle='#0a1a0a';ctx.lineWidth=.5;
+  for(let x=0;x<w;x+=5){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke()}
+  for(let y=0;y<h;y+=5){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke()}
+  // Draw ECG
+  ctx.strokeStyle='#00ff41';ctx.lineWidth=1.2;ctx.beginPath();
+  const gain=leadGain(lead);
+  const beats=Math.floor(w/80);
+  for(let i=0;i<w;i++){
+    const beatPhase=(i%80)/80;
+    const y=h/2-genECGLead(beatPhase,lead,S.rhythm)*h*0.4*gain;
+    i===0?ctx.moveTo(i,y):ctx.lineTo(i,y);
+  }
+  ctx.stroke();
+}
+function leadGain(lead){
+  const g={I:1,II:1.2,III:0.8,aVR:-0.6,aVL:0.5,aVF:0.9,V1:0.8,V2:1.2,V3:1.5,V4:1.3,V5:1.1,V6:0.9};
+  return g[lead]||1;
+}
+function genECGLead(p,lead,rhythm){
+  let v=0;
+  // Base QRS
+  if(rhythm==='vf')return(Math.sin(p*Math.PI*8)*.3+Math.sin(p*Math.PI*3)*.2)*(Math.random()*.3+.7);
+  if(rhythm==='asystole')return(Math.random()-.5)*.02;
+  if(rhythm==='vt')return Math.sin(p*Math.PI*2)*.4;
+
+  // P wave
+  if(p>.05&&p<.15)v+=Math.sin((p-.05)/.1*Math.PI)*.06;
+  // QRS
+  if(p>.2&&p<.24)v-=.08;
+  else if(p>.24&&p<.3)v+=.45;
+  else if(p>.3&&p<.34)v-=.1;
+  // T wave
+  if(p>.4&&p<.58)v+=Math.sin((p-.4)/.18*Math.PI)*.1;
+
+  // STEMI modifications
+  if(rhythm==='stemi_ant'&&['V1','V2','V3','V4'].includes(lead)){if(p>.34&&p<.42)v+=.15}
+  if(rhythm==='stemi_inf'&&['II','III','aVF'].includes(lead)){if(p>.34&&p<.42)v+=.15}
+  if(rhythm==='stemi_lat'&&['I','aVL','V5','V6'].includes(lead)){if(p>.34&&p<.42)v+=.12}
+
+  // Invert for aVR
+  if(lead==='aVR')v=-v;
+  return v;
+}
+
+// ══════════════════════════════════════════════════════════
+// VENTILATOR
+// ══════════════════════════════════════════════════════════
+const ventWF={p:{},f:{},v:{}};
+function initVentCanvases(){
+  [{id:'cVentP',key:'p'},{id:'cVentF',key:'f'},{id:'cVentV',key:'v'}].forEach(({id,key})=>{
+    const canvas=$(id);const cont=canvas.parentElement;
+    canvas.width=cont.clientWidth*2;canvas.height=cont.clientHeight*2;
+    canvas.style.width=cont.clientWidth+'px';canvas.style.height=cont.clientHeight+'px';
+    ventWF[key]={canvas,ctx:canvas.getContext('2d'),w:cont.clientWidth,h:cont.clientHeight,
+      data:new Array(Math.ceil(cont.clientWidth/2)).fill(.5),pos:0};
+    ventWF[key].ctx.scale(2,2);
+  });
+}
+function ventMode(mode,btn){
+  S.vent.mode=mode;qs('.vent-mode-btn').forEach(b=>b.classList.remove('on'));btn.classList.add('on');
+  logEvent('Ventilator mode: '+mode.toUpperCase());
+}
+function lungCond(cond,btn){
+  S.vent.lung=cond;qs('.vent-controls .incident-btn').forEach(b=>b.classList.remove('active-inc'));
+  btn.classList.add('active-inc');
+  // Apply condition effects
+  const fx={normal:{c:50,pip:20},ards:{c:25,pip:35},asthma:{c:40,pip:30},copd:{c:35,pip:28},
+    covid:{c:30,pip:32},fibrosis:{c:20,pip:38},pneumo:{c:15,pip:45},broncho:{c:30,pip:35}};
+  const e=fx[cond]||fx.normal;S.vent.compliance=e.c;S.vent.pip=e.pip;
+  logEvent('Lung condition: '+cond,'warn');
+}
+
+function updateVentDisplay(){
+  const v=S.vent;
+  $('vdVt').textContent=v.vt;$('vdRR').textContent=v.rate;
+  $('vdPIP').textContent=v.pip;$('vdPEEP').textContent=v.peep;
+  $('vdFiO2').textContent=v.fio2;$('vdMV').textContent=(v.vt*v.rate/1000).toFixed(1);
+  $('vdIE').textContent='1:'+v.ie.toFixed(1);$('vdCompl').textContent=v.compliance;
+}
+
+// ══════════════════════════════════════════════════════════
+// WAVEFORM RENDERING ENGINE
+// ══════════════════════════════════════════════════════════
+const WF={};
+function initMonitorCanvases(){
+  [{id:'cEcg',key:'ecg',color:'#00ff41'},{id:'cSpo2',key:'spo2',color:'#ffd700'},
+   {id:'cAbp',key:'abp',color:'#ff3333'},{id:'cCo2',key:'co2',color:'#ffffff'},
+   {id:'cResp',key:'resp',color:'#ffffff'}].forEach(({id,key,color})=>{
+    const canvas=$(id);const cont=canvas.parentElement;
+    canvas.width=cont.clientWidth*2;canvas.height=cont.clientHeight*2;
+    canvas.style.width=cont.clientWidth+'px';canvas.style.height=cont.clientHeight+'px';
+    const ctx=canvas.getContext('2d');ctx.scale(2,2);
+    WF[key]={canvas,ctx,w:cont.clientWidth,h:cont.clientHeight,color,
+      data:new Array(Math.ceil(cont.clientWidth/2)).fill(.5),pos:0};
+  });
+}
+
+// ── ECG Generator ──
+let ectopicCountdown=0,ectopicType='';
+function genECG(phase){
+  const r=S.rhythm,p=phase%1;
+  if(r==='asystole')return .5+(Math.random()-.5)*.01;
+  if(r==='vf')return .5+Math.sin(p*Math.PI*8)*.3*Math.sin(p*Math.PI*3)+(Math.random()-.5)*.15;
+  if(r==='vt'){return .5+Math.sin(p*Math.PI*2)*.35+(Math.random()-.5)*.03}
+  if(r==='torsades'){const amp=.3+Math.sin(animT*.3)*.15;return .5+Math.sin(p*Math.PI*2)*amp+(Math.random()-.5)*.03}
+  if(r==='afl'){const saw=((p*4)%1)*.3;return .5+saw-.15+(p>.22&&p<.28?.35:0)+(Math.random()-.5)*.01}
+
+  let v=.5,n=(Math.random()-.5)*.006;
+
+  // Artifact
+  if(S.artifact&&Math.random()<S.artifact*.01)n+=(Math.random()-.5)*.15;
+
+  // Ectopic check
+  if(ectopicCountdown<=0&&Math.random()<.003*(S.ectPVC+S.ectPAC+S.ectPJC)){
+    ectopicCountdown=1;
+    ectopicType=S.ectPVC?'pvc':S.ectPAC?'pac':'pjc';
+  }
+  if(ectopicCountdown>0&&p<.05){ectopicCountdown--;
+    if(ectopicType==='pvc'){// Wide QRS
+      if(p>.1&&p<.35)v+=Math.sin((p-.1)/.25*Math.PI)*.4;
+      return v+n}
+    if(ectopicType==='pac'){// Early narrow QRS
+      if(p>.15&&p<.22)v+=.3;return v+n}
+  }
+
+  // P wave (absent in AF, junctional)
+  if(!['af','junctional'].includes(r)&&p>.05&&p<.15)v+=Math.sin((p-.05)/.1*Math.PI)*.04;
+  // PR prolongation
+  let qrsStart=.2;
+  if(r==='avb1')qrsStart=.28;
+  if(r==='wpw')qrsStart=.17;
+
+  // QRS
+  if(p>qrsStart&&p<qrsStart+.04)v-=.06;
+  else if(p>qrsStart+.04&&p<qrsStart+.1)v+=.38;
+  else if(p>qrsStart+.1&&p<qrsStart+.14)v-=.08;
+
+  // Delta wave (WPW)
+  if(r==='wpw'&&p>.15&&p<.2)v+=.1;
+
+  // T wave
+  if(p>.38&&p<.55)v+=Math.sin((p-.38)/.17*Math.PI)*.08;
+  // Long QT
+  if(r==='longqt'&&p>.38&&p<.65)v+=Math.sin((p-.38)/.27*Math.PI)*.08;
+  // Hyperkalemia peaked T
+  if(r==='hyperK'&&p>.38&&p<.5)v+=Math.sin((p-.38)/.12*Math.PI)*.15;
+  // Brugada coved ST
+  if(r==='brugada'&&p>.3&&p<.45)v+=.1;
+  // STEMI ST elevation
+  if(['stemi_ant','stemi_inf','stemi_lat'].includes(r)&&p>.3&&p<.4)v+=.12;
+  // Osborn wave
+  if(r==='hypothermia'&&p>.32&&p<.38)v+=Math.sin((p-.32)/.06*Math.PI)*.12;
+  // Pacing spike
+  if(r==='paced'&&p>.18&&p<.2)v+=.25;
+  // AF irregular baseline
+  if(r==='af')v+=Math.sin(p*Math.PI*12)*.012+Math.sin(p*Math.PI*7)*.01;
+  // 3rd degree: independent P waves
+  if(r==='avb3'){const pPhase=(animT*1.3)%1;if(Math.abs(p-pPhase)<.05)v+=Math.sin((p-pPhase+.05)/.1*Math.PI)*.06}
+
+  return v+n;
+}
+
+function genSpO2(phase){if(S.spo2<=0)return .5;const p=phase%1;let v=.5;
+  if(p<.15)v+=Math.sin(p/.15*Math.PI)*.25;else if(p<.35)v+=Math.sin((p-.15)/.2*Math.PI+Math.PI)*.08+.05;
+  return v+(Math.random()-.5)*.005}
+
+function genABP(phase){if(S.sys<=0)return .5;const p=phase%1;
+  const sys=S.sys/250,dia=S.dia/250;let v;
+  if(p<.15)v=dia+(sys-dia)*Math.sin(p/.15*Math.PI/2);
+  else if(p<.25)v=sys-(sys-dia)*.4*((p-.15)/.1);
+  else if(p<.35)v=sys-(sys-dia)*.4+(sys-dia)*.15*Math.sin((p-.25)/.1*Math.PI);
+  else v=dia+(sys-dia)*.2*Math.exp(-(p-.35)*5);
+  return 1-v+(Math.random()-.5)*.005}
+
+function genCO2(phase){if(S.etco2<=0||S.rr<=0)return .85;const p=phase%1;const amp=S.etco2/80*.6;let v=.85;
+  if(p<.05){}else if(p<.15)v-=amp*Math.sin((p-.05)/.1*Math.PI/2);
+  else if(p<.55)v-=amp;else if(p<.65)v-=amp*(1-(p-.55)/.1);
+  return v+(Math.random()-.5)*.003}
+
+function genResp(phase){if(S.rr<=0)return .5;return .5+Math.sin((phase%1)*Math.PI*2)*.2+(Math.random()-.5)*.005}
+
+// Vent waveforms
+function genVentP(phase){const v=S.vent,p=phase%1;
+  if(p<.3)return v.peep/50+((v.pip-v.peep)/50)*Math.sin(p/.3*Math.PI/2);
+  if(p<.35)return v.pip/50;if(p<.45)return v.peep/50+(v.pip-v.peep)/50*(1-(p-.35)/.1);
+  return v.peep/50+(Math.random()-.5)*.005}
+function genVentF(phase){const p=phase%1;
+  if(p<.3)return .5+.3;if(p<.35)return .5;if(p<.55)return .5-.25;return .5+(Math.random()-.5)*.01}
+function genVentV(phase){const p=phase%1;const vt=S.vent.vt/800;
+  if(p<.3)return .1+vt*Math.sin(p/.3*Math.PI/2);if(p<.35)return .1+vt;
+  if(p<.55)return .1+vt*(1-(p-.35)/.2);return .1+(Math.random()-.5)*.005}
+
+// ── Animation Loop ──
+let animT=0,lastBeep=0;
+function animate(){
+  animT+=.016;
+  const hrEff=Math.max(1,S.hr+(S.rhythm==='af'?Math.sin(animT*2)*15:0));
+  const hrPeriod=hrEff>0?60/hrEff:999;
+  const rrPeriod=S.rr>0?60/S.rr:999;
+  const ecgPhase=(animT/hrPeriod)%1;
+  const rrPhase=(animT/rrPeriod)%1;
+
+  // HR beep
+  if(S.hr>0&&animT-lastBeep>hrPeriod){lastBeep=animT;beep(Math.max(400,800+(S.spo2-50)*4),.06,.03)}
+
+  // Monitor waveforms
+  if(WF.ecg){
+    const samples={ecg:genECG(ecgPhase),spo2:genSpO2(ecgPhase),abp:genABP(ecgPhase),co2:genCO2(rrPhase),resp:genResp(rrPhase)};
+    Object.entries(WF).forEach(([key,wf])=>{
+      wf.data[wf.pos]=samples[key];wf.pos=(wf.pos+1)%wf.data.length;
+      const ctx=wf.ctx,w=wf.w,h=wf.h;ctx.clearRect(0,0,w,h);
+      // Subtle grid
+      ctx.strokeStyle='#111';ctx.lineWidth=.5;
+      for(let y=0;y<h;y+=h/4){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke()}
+      // Waveform
+      ctx.strokeStyle=wf.color;ctx.lineWidth=2;ctx.shadowColor=wf.color;ctx.shadowBlur=3;ctx.beginPath();
+      const len=wf.data.length,gap=8;
+      for(let i=0;i<len;i++){
+        const di=(wf.pos+i)%len,dist=(len-i)%len;if(dist<gap)continue;
+        const x=(i/len)*w,y=wf.data[di]*h;
+        (i===0||dist===gap)?ctx.moveTo(x,y):ctx.lineTo(x,y);
+      }
+      ctx.stroke();ctx.shadowBlur=0;
+      // Sweep
+      const sx=(wf.pos/len)*w;ctx.strokeStyle='#222';ctx.lineWidth=3;
+      ctx.beginPath();ctx.moveTo(sx,0);ctx.lineTo(sx,h);ctx.stroke();
+    });
+  }
+
+  // Vent waveforms
+  if(ventWF.p.ctx){
+    const ventPeriod=60/S.vent.rate;const vPhase=(animT/ventPeriod)%1;
+    const vSamples={p:genVentP(vPhase),f:genVentF(vPhase),v:genVentV(vPhase)};
+    const colors={p:'#00e5ff',f:'#ffd700',v:'#00ff41'};
+    Object.entries(ventWF).forEach(([key,wf])=>{
+      if(!wf.ctx)return;
+      wf.data[wf.pos]=vSamples[key];wf.pos=(wf.pos+1)%wf.data.length;
+      const ctx=wf.ctx,w=wf.w,h=wf.h;ctx.clearRect(0,0,w,h);
+      ctx.strokeStyle='#111';ctx.lineWidth=.5;
+      for(let y=0;y<h;y+=h/4){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke()}
+      ctx.strokeStyle=colors[key];ctx.lineWidth=2;ctx.beginPath();
+      const len=wf.data.length,gap=6;
+      for(let i=0;i<len;i++){
+        const di=(wf.pos+i)%len,dist=(len-i)%len;if(dist<gap)continue;
+        const x=(i/len)*w,y=(1-wf.data[di])*h;
+        (i===0||dist===gap)?ctx.moveTo(x,y):ctx.lineTo(x,y);
+      }
+      ctx.stroke();
+      const sx=(wf.pos/len)*w;ctx.strokeStyle='#222';ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(sx,0);ctx.lineTo(sx,h);ctx.stroke();
+    });
+    updateVentDisplay();
+  }
+
+  requestAnimationFrame(animate);
+}
+
+// ══════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════
+window.addEventListener('load',()=>{
+  initMonitorCanvases();
+  loadScenario(0);
+  animate();
+  setInterval(updateVitals,500);
+  logEvent('System initialized');
+  logEvent('Monitor ready');
+});
+window.addEventListener('resize',()=>{
+  initMonitorCanvases();
+  if($('viewVent').classList.contains('active'))initVentCanvases();
+});
+</script>
+</body>
+</html>
